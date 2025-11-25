@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -189,12 +188,8 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 	// Log de debug do response
 	// log.Printf("[DEBUG] Response Status: %d %s", resp.StatusCode, resp.Status)
 
-	// Log de headers importantes de forma mais limpa
-	contentType := resp.Header.Get("Content-Type")
+	// Obter Content-Encoding para processamento
 	contentEncoding := resp.Header.Get("Content-Encoding")
-	contentLength := resp.Header.Get("Content-Length")
-	// log.Printf("[DEBUG] Response Headers - Content-Type: %s, Content-Encoding: %s, Content-Length: %s",
-	// 	contentType, contentEncoding, contentLength)
 
 	// Se a resposta não for OK, logar o erro mas ainda processar o body
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
