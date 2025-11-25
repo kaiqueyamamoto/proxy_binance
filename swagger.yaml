@@ -1,0 +1,718 @@
+openapi: 3.0.3
+info:
+  title: Binance Proxy API
+  description: |
+    Proxy para a API da Binance que permite acesso CORS e facilita integração frontend.
+    Este proxy repassa todas as requisições para a API oficial da Binance (https://api.binance.com/api/v3).
+    
+    **Endpoints do Proxy:**
+    - `/health` - Verifica se o proxy está funcionando
+    - `/test` - Testa a conexão com a Binance
+    
+    **Endpoints da Binance (proxied):**
+    Todos os endpoints da API v3 da Binance estão disponíveis através deste proxy.
+  version: 1.0.0
+  contact:
+    name: Binance Proxy Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Servidor local de desenvolvimento
+  - url: https://api.binance.com/api/v3
+    description: API oficial da Binance (referência)
+
+tags:
+  - name: Proxy
+    description: Endpoints do próprio proxy
+  - name: Market Data
+    description: Dados de mercado (não requerem autenticação)
+  - name: Account
+    description: Dados da conta (requerem autenticação)
+
+paths:
+  /health:
+    get:
+      tags:
+        - Proxy
+      summary: Health Check
+      description: Verifica se o proxy está funcionando corretamente
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Proxy está funcionando
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: binance-proxy
+                  time:
+                    type: string
+                    format: date-time
+                    example: "2025-11-25T21:54:29Z"
+                  binance_url:
+                    type: string
+                    example: https://api.binance.com/api/v3
+
+  /test:
+    get:
+      tags:
+        - Proxy
+      summary: Test Connection
+      description: Testa a conexão com a API da Binance
+      operationId: testConnection
+      responses:
+        '200':
+          description: Conexão estabelecida com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  binance_url:
+                    type: string
+                    example: https://api.binance.com/api/v3
+                  http_status:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Conexão com Binance estabelecida com sucesso
+        '503':
+          description: Erro ao conectar com Binance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /ping:
+    get:
+      tags:
+        - Market Data
+      summary: Test Connectivity
+      description: Testa a conectividade com o servidor da Binance
+      operationId: ping
+      responses:
+        '200':
+          description: Servidor está respondendo
+          content:
+            application/json:
+              schema:
+                type: object
+                example: {}
+
+  /time:
+    get:
+      tags:
+        - Market Data
+      summary: Check Server Time
+      description: Retorna o tempo do servidor da Binance
+      operationId: serverTime
+      responses:
+        '200':
+          description: Tempo do servidor
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  serverTime:
+                    type: integer
+                    format: int64
+                    description: Timestamp em milissegundos
+                    example: 1635724800000
+
+  /exchangeInfo:
+    get:
+      tags:
+        - Market Data
+      summary: Exchange Information
+      description: Retorna informações sobre símbolos de negociação, filtros e permissões
+      operationId: exchangeInfo
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: symbols
+          in: query
+          description: Lista de símbolos separados por vírgula
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT,ETHUSDT
+      responses:
+        '200':
+          description: Informações da exchange
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timezone:
+                    type: string
+                  serverTime:
+                    type: integer
+                    format: int64
+                  rateLimits:
+                    type: array
+                    items:
+                      type: object
+                  exchangeFilters:
+                    type: array
+                  symbols:
+                    type: array
+                    items:
+                      type: object
+
+  /ticker/24hr:
+    get:
+      tags:
+        - Market Data
+      summary: 24hr Ticker Price Change Statistics
+      description: |
+        Retorna estatísticas de mudança de preço nas últimas 24 horas para um símbolo ou todos os símbolos.
+        **Nota:** Se nenhum símbolo for fornecido, retorna dados para todos os símbolos (pode ser muito grande).
+      operationId: ticker24hr
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: symbols
+          in: query
+          description: Lista de símbolos separados por vírgula (máximo 5)
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT,ETHUSDT
+        - name: type
+          in: query
+          description: Tipo de resposta (FULL ou MINI)
+          required: false
+          schema:
+            type: string
+            enum: [FULL, MINI]
+            default: FULL
+      responses:
+        '200':
+          description: Estatísticas de 24 horas
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/Ticker24hr'
+                  - $ref: '#/components/schemas/Ticker24hr'
+              examples:
+                single:
+                  summary: Resposta para um símbolo
+                  value:
+                    symbol: BTCUSDT
+                    priceChange: "100.50"
+                    priceChangePercent: "2.5"
+                    weightedAvgPrice: "40250.00"
+                    prevClosePrice: "40150.00"
+                    lastPrice: "40250.50"
+                    lastQty: "0.1"
+                    bidPrice: "40250.00"
+                    bidQty: "1.5"
+                    askPrice: "40250.50"
+                    askQty: "2.0"
+                    openPrice: "40150.00"
+                    highPrice: "40500.00"
+                    lowPrice: "40000.00"
+                    volume: "1500.5"
+                    quoteVolume: "60375000.00"
+                    openTime: 1635724800000
+                    closeTime: 1635811200000
+                    firstId: 1000000
+                    lastId: 1000500
+                    count: 500
+                multiple:
+                  summary: Resposta para múltiplos símbolos
+                  value:
+                    - symbol: BTCUSDT
+                      priceChange: "100.50"
+                      priceChangePercent: "2.5"
+                      lastPrice: "40250.50"
+                    - symbol: ETHUSDT
+                      priceChange: "50.25"
+                      priceChangePercent: "1.8"
+                      lastPrice: "3050.75"
+
+  /ticker/price:
+    get:
+      tags:
+        - Market Data
+      summary: Symbol Price Ticker
+      description: Retorna o preço mais recente para um símbolo ou todos os símbolos
+      operationId: tickerPrice
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: symbols
+          in: query
+          description: Lista de símbolos separados por vírgula
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT,ETHUSDT
+      responses:
+        '200':
+          description: Preço(s) do símbolo(s)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/PriceTicker'
+                  - $ref: '#/components/schemas/PriceTicker'
+
+  /ticker/bookTicker:
+    get:
+      tags:
+        - Market Data
+      summary: Symbol Order Book Ticker
+      description: Retorna o melhor preço de compra/venda e quantidade para um símbolo ou todos os símbolos
+      operationId: bookTicker
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: symbols
+          in: query
+          description: Lista de símbolos separados por vírgula
+          required: false
+          schema:
+            type: string
+            example: BTCUSDT,ETHUSDT
+      responses:
+        '200':
+          description: Melhor preço de compra/venda
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/BookTicker'
+                  - $ref: '#/components/schemas/BookTicker'
+
+  /avgPrice:
+    get:
+      tags:
+        - Market Data
+      summary: Current Average Price
+      description: Retorna o preço médio ponderado nos últimos 5 minutos para um símbolo
+      operationId: avgPrice
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: true
+          schema:
+            type: string
+            example: BTCUSDT
+      responses:
+        '200':
+          description: Preço médio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvgPrice'
+
+  /klines:
+    get:
+      tags:
+        - Market Data
+      summary: Kline/Candlestick Data
+      description: Retorna dados de candlestick (velas) para um símbolo
+      operationId: klines
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: true
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: interval
+          in: query
+          description: Intervalo de tempo
+          required: true
+          schema:
+            type: string
+            enum: [1m, 3m, 5m, 15m, 30m, 1h, 2h, 4h, 6h, 8h, 12h, 1d, 3d, 1w, 1M]
+            example: 1h
+        - name: startTime
+          in: query
+          description: Timestamp de início em milissegundos
+          required: false
+          schema:
+            type: integer
+            format: int64
+            example: 1635724800000
+        - name: endTime
+          in: query
+          description: Timestamp de fim em milissegundos
+          required: false
+          schema:
+            type: integer
+            format: int64
+            example: 1635811200000
+        - name: limit
+          in: query
+          description: Número de resultados (máximo 1000, padrão 500)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 500
+            example: 100
+      responses:
+        '200':
+          description: Dados de candlestick
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  items:
+                    oneOf:
+                      - type: integer
+                      - type: string
+                  minItems: 12
+                  maxItems: 12
+                  description: |
+                    [0] - Open time
+                    [1] - Open price
+                    [2] - High price
+                    [3] - Low price
+                    [4] - Close price
+                    [5] - Volume
+                    [6] - Close time
+                    [7] - Quote asset volume
+                    [8] - Number of trades
+                    [9] - Taker buy base asset volume
+                    [10] - Taker buy quote asset volume
+                    [11] - Ignore
+
+  /depth:
+    get:
+      tags:
+        - Market Data
+      summary: Order Book
+      description: Retorna o livro de ordens (order book) para um símbolo
+      operationId: depth
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: true
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: limit
+          in: query
+          description: Número de níveis (5, 10, 20, 50, 100, 500, 1000, 5000)
+          required: false
+          schema:
+            type: integer
+            enum: [5, 10, 20, 50, 100, 500, 1000, 5000]
+            default: 100
+            example: 20
+      responses:
+        '200':
+          description: Livro de ordens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderBook'
+
+  /trades:
+    get:
+      tags:
+        - Market Data
+      summary: Recent Trades List
+      description: Retorna as negociações recentes para um símbolo
+      operationId: trades
+      parameters:
+        - name: symbol
+          in: query
+          description: "Símbolo de negociação (ex: BTCUSDT)"
+          required: true
+          schema:
+            type: string
+            example: BTCUSDT
+        - name: limit
+          in: query
+          description: Número de resultados (máximo 1000, padrão 500)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 500
+            example: 50
+      responses:
+        '200':
+          description: Lista de negociações recentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trade'
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Código de erro
+          example: -1000
+        msg:
+          type: string
+          description: Mensagem de erro
+          example: "Erro ao conectar com Binance"
+        message:
+          type: string
+          description: Mensagem de erro detalhada
+          example: "Erro ao conectar com Binance: connection timeout"
+
+    Ticker24hr:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: BTCUSDT
+        priceChange:
+          type: string
+          description: Mudança de preço nas últimas 24h
+          example: "100.50"
+        priceChangePercent:
+          type: string
+          description: Mudança percentual de preço nas últimas 24h
+          example: "2.5"
+        weightedAvgPrice:
+          type: string
+          description: Preço médio ponderado
+          example: "40250.00"
+        prevClosePrice:
+          type: string
+          description: Preço de fechamento anterior
+          example: "40150.00"
+        lastPrice:
+          type: string
+          description: Último preço
+          example: "40250.50"
+        lastQty:
+          type: string
+          description: Última quantidade
+          example: "0.1"
+        bidPrice:
+          type: string
+          description: Melhor preço de compra
+          example: "40250.00"
+        bidQty:
+          type: string
+          description: Quantidade no melhor preço de compra
+          example: "1.5"
+        askPrice:
+          type: string
+          description: Melhor preço de venda
+          example: "40250.50"
+        askQty:
+          type: string
+          description: Quantidade no melhor preço de venda
+          example: "2.0"
+        openPrice:
+          type: string
+          description: Preço de abertura
+          example: "40150.00"
+        highPrice:
+          type: string
+          description: Maior preço nas últimas 24h
+          example: "40500.00"
+        lowPrice:
+          type: string
+          description: Menor preço nas últimas 24h
+          example: "40000.00"
+        volume:
+          type: string
+          description: Volume base nas últimas 24h
+          example: "1500.5"
+        quoteVolume:
+          type: string
+          description: Volume quote nas últimas 24h
+          example: "60375000.00"
+        openTime:
+          type: integer
+          format: int64
+          description: Timestamp de abertura
+          example: 1635724800000
+        closeTime:
+          type: integer
+          format: int64
+          description: Timestamp de fechamento
+          example: 1635811200000
+        firstId:
+          type: integer
+          format: int64
+          description: ID da primeira negociação
+          example: 1000000
+        lastId:
+          type: integer
+          format: int64
+          description: ID da última negociação
+          example: 1000500
+        count:
+          type: integer
+          description: Número de negociações
+          example: 500
+
+    PriceTicker:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: BTCUSDT
+        price:
+          type: string
+          description: Preço atual
+          example: "40250.50"
+
+    BookTicker:
+      type: object
+      properties:
+        symbol:
+          type: string
+          example: BTCUSDT
+        bidPrice:
+          type: string
+          description: Melhor preço de compra
+          example: "40250.00"
+        bidQty:
+          type: string
+          description: Quantidade no melhor preço de compra
+          example: "1.5"
+        askPrice:
+          type: string
+          description: Melhor preço de venda
+          example: "40250.50"
+        askQty:
+          type: string
+          description: Quantidade no melhor preço de venda
+          example: "2.0"
+
+    AvgPrice:
+      type: object
+      properties:
+        mins:
+          type: integer
+          description: Número de minutos
+          example: 5
+        price:
+          type: string
+          description: Preço médio
+          example: "40250.00"
+
+    OrderBook:
+      type: object
+      properties:
+        lastUpdateId:
+          type: integer
+          format: int64
+          description: Último ID de atualização
+          example: 1000000
+        bids:
+          type: array
+          description: Ordens de compra [preço, quantidade]
+          items:
+            type: array
+            items:
+              type: string
+            minItems: 2
+            maxItems: 2
+          example:
+            - ["40250.00", "1.5"]
+            - ["40249.50", "2.0"]
+        asks:
+          type: array
+          description: Ordens de venda [preço, quantidade]
+          items:
+            type: array
+            items:
+              type: string
+            minItems: 2
+            maxItems: 2
+          example:
+            - ["40250.50", "2.0"]
+            - ["40251.00", "1.5"]
+
+    Trade:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID da negociação
+          example: 1000000
+        price:
+          type: string
+          description: Preço
+          example: "40250.50"
+        qty:
+          type: string
+          description: Quantidade
+          example: "0.1"
+        quoteQty:
+          type: string
+          description: Quantidade quote
+          example: "4025.05"
+        time:
+          type: integer
+          format: int64
+          description: Timestamp da negociação
+          example: 1635724800000
+        isBuyerMaker:
+          type: boolean
+          description: Se o comprador é o maker
+          example: false
+        isBestMatch:
+          type: boolean
+          description: Se é a melhor correspondência
+          example: true
+

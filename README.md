@@ -5,11 +5,14 @@ Servidor proxy em Go para fazer proxy de requisições para a API da Binance, re
 ## 🚀 Funcionalidades
 
 - Proxy completo para a API da Binance
+- Framework Gin para alta performance
+- Swagger UI integrado - documentação interativa
 - Suporte a CORS para requisições do frontend
 - Health check endpoint
 - Teste de conexão com a Binance
 - Configurável via variáveis de ambiente
 - Timeout configurável para requisições
+- Logs detalhados em formato debug
 
 ## 📋 Pré-requisitos
 
@@ -109,6 +112,52 @@ POST /api/v3/order
 
 Todas as rotas são repassadas para a API da Binance.
 
+## 📚 Documentação Swagger/OpenAPI
+
+O projeto inclui documentação Swagger completa integrada ao servidor Gin. A documentação está disponível diretamente no servidor.
+
+### Acessar a Documentação Swagger UI
+
+Após iniciar o servidor, acesse:
+
+```
+http://localhost:8080/swagger/index.html
+```
+
+A documentação Swagger UI está totalmente integrada e permite:
+- Visualizar todos os endpoints disponíveis
+- Testar endpoints diretamente na interface
+- Ver exemplos de requisições e respostas
+- Entender os parâmetros necessários
+
+### Endpoint JSON da Documentação
+
+O arquivo JSON da documentação está disponível em:
+
+```
+http://localhost:8080/swagger/doc.json
+```
+
+### Principais Endpoints Documentados
+
+- **Proxy:**
+  - `GET /health` - Health check
+  - `GET /test` - Testar conexão com Binance
+
+- **Market Data:**
+  - `GET /ticker/24hr` - Estatísticas de 24 horas
+  - `GET /ticker/price` - Preço atual
+  - `GET /ticker/bookTicker` - Melhor preço de compra/venda
+  - `GET /klines` - Dados de candlestick
+  - `GET /depth` - Livro de ordens
+  - `GET /trades` - Negociações recentes
+  - `GET /avgPrice` - Preço médio
+  - `GET /exchangeInfo` - Informações da exchange
+  - `GET /ping` - Teste de conectividade
+  - `GET /time` - Tempo do servidor
+
+Consulte o arquivo `swagger.yaml` para a documentação completa de todos os endpoints e parâmetros.
+
 ## 🔗 Uso no Frontend
 
 ### Exemplo com fetch
@@ -172,9 +221,11 @@ docker run -p 8080:8080 -e PORT=8080 binance-proxy
 
 ```
 proxy_binance/
-├── main.go          # Código principal do proxy
+├── main.go          # Código principal do proxy (Gin + Swagger)
 ├── go.mod           # Dependências do Go
 ├── go.sum           # Checksums das dependências
+├── swagger.yaml     # Documentação Swagger/OpenAPI
+├── SWAGGER.md       # Guia de uso do Swagger
 ├── README.md        # Este arquivo
 └── .gitignore       # Arquivos ignorados pelo Git
 ```
