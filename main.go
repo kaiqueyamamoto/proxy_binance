@@ -105,9 +105,9 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 			if err == nil {
 				// Substituir o valor do parâmetro
 				queryParams.Set("symbols", string(symbolsJSON))
-				log.Printf("[DEBUG] Convertido symbols de '%s' para '%s'", symbolsValue, string(symbolsJSON))
+				// log.Printf("[DEBUG] Convertido symbols de '%s' para '%s'", symbolsValue, string(symbolsJSON))
 			} else {
-				log.Printf("[WARN] Erro ao converter symbols para JSON: %v", err)
+				// log.Printf("[WARN] Erro ao converter symbols para JSON: %v", err)
 			}
 		}
 	}
@@ -119,14 +119,14 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 		targetURL += "?" + queryString
 	}
 
-	log.Printf("[INFO] Proxying request: %s %s%s -> %s", c.Request.Method, c.Request.URL.Path, func() string {
-		if queryString != "" {
-			return "?" + queryString
-		} else if c.Request.URL.RawQuery != "" {
-			return "?" + c.Request.URL.RawQuery
-		}
-		return ""
-	}(), targetURL)
+	// log.Printf("[INFO] Proxying request: %s %s%s -> %s", c.Request.Method, c.Request.URL.Path, func() string {
+	// 	if queryString != "" {
+	// 		return "?" + queryString
+	// 	} else if c.Request.URL.RawQuery != "" {
+	// 		return "?" + c.Request.URL.RawQuery
+	// 	}
+	// 	return ""
+	// }(), targetURL)
 
 	// Criar a requisição para a Binance
 	req, err := http.NewRequest(c.Request.Method, targetURL, c.Request.Body)
@@ -164,7 +164,7 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 	// Fazer a requisição para a Binance
 	resp, err := p.client.Do(req)
 	if err != nil {
-		log.Printf("Erro ao fazer requisição para Binance: %v", err)
+		// log.Printf("Erro ao fazer requisição para Binance: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{
 			"code":    -1000,
 			"msg":     fmt.Sprintf("Erro ao conectar com Binance: %v", err),
@@ -177,7 +177,7 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 	// Ler o corpo da resposta
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("Erro ao ler resposta da Binance: %v", err)
+		// log.Printf("Erro ao ler resposta da Binance: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    -1001,
 			"msg":     "Erro ao ler resposta da Binance",
@@ -187,18 +187,18 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 	}
 
 	// Log de debug do response
-	log.Printf("[DEBUG] Response Status: %d %s", resp.StatusCode, resp.Status)
+	// log.Printf("[DEBUG] Response Status: %d %s", resp.StatusCode, resp.Status)
 
 	// Log de headers importantes de forma mais limpa
 	contentType := resp.Header.Get("Content-Type")
 	contentEncoding := resp.Header.Get("Content-Encoding")
 	contentLength := resp.Header.Get("Content-Length")
-	log.Printf("[DEBUG] Response Headers - Content-Type: %s, Content-Encoding: %s, Content-Length: %s",
-		contentType, contentEncoding, contentLength)
+	// log.Printf("[DEBUG] Response Headers - Content-Type: %s, Content-Encoding: %s, Content-Length: %s",
+	// 	contentType, contentEncoding, contentLength)
 
 	// Se a resposta não for OK, logar o erro mas ainda processar o body
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		log.Printf("[WARN] Binance retornou status não-OK: %d %s", resp.StatusCode, resp.Status)
+		// log.Printf("[WARN] Binance retornou status não-OK: %d %s", resp.StatusCode, resp.Status)
 	}
 
 	// Descomprimir se for gzip e preparar body para envio
@@ -210,12 +210,12 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 			reader.Close()
 			if err == nil {
 				bodyToSend = decompressed
-				log.Printf("[DEBUG] Descomprimido body gzip: %d bytes -> %d bytes", len(body), len(bodyToSend))
+				// log.Printf("[DEBUG] Descomprimido body gzip: %d bytes -> %d bytes", len(body), len(bodyToSend))
 			} else {
-				log.Printf("[WARN] Erro ao descomprimir gzip: %v", err)
+				// log.Printf("[WARN] Erro ao descomprimir gzip: %v", err)
 			}
 		} else {
-			log.Printf("[WARN] Erro ao criar reader gzip: %v", err)
+			// log.Printf("[WARN] Erro ao criar reader gzip: %v", err)
 		}
 	}
 
@@ -228,14 +228,14 @@ func (p *ProxyServer) ProxyRequest(c *gin.Context) {
 		if len(jsonStr) > 2000 {
 			jsonStr = jsonStr[:2000] + "\n... (truncated)"
 		}
-		log.Printf("[DEBUG] Response Body (JSON):\n%s", jsonStr)
+		// log.Printf("[DEBUG] Response Body (JSON):\n%s", jsonStr)
 	} else {
 		// Se não for JSON, mostrar como string (limitado a 1000 caracteres)
 		bodyStr := string(bodyToSend)
 		if len(bodyStr) > 1000 {
 			bodyStr = bodyStr[:1000] + "... (truncated)"
 		}
-		log.Printf("[DEBUG] Response Body (raw): %s", bodyStr)
+		// log.Printf("[DEBUG] Response Body (raw): %s", bodyStr)
 	}
 
 	// Copiar headers importantes, mas remover Content-Encoding se descomprimimos
@@ -363,7 +363,7 @@ func setupRouter(proxy *ProxyServer) *gin.Engine {
 			// Ler o arquivo swagger.yaml
 			yamlData, err := os.ReadFile("./swagger.yaml")
 			if err != nil {
-				log.Printf("[ERROR] Erro ao ler swagger.yaml: %v", err)
+				// log.Printf("[ERROR] Erro ao ler swagger.yaml: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Não foi possível ler o arquivo swagger.yaml: %v", err),
 				})
@@ -373,8 +373,8 @@ func setupRouter(proxy *ProxyServer) *gin.Engine {
 			// Converter YAML para JSON usando map[string]interface{} para melhor compatibilidade
 			var swaggerData map[string]interface{}
 			if err := yaml.Unmarshal(yamlData, &swaggerData); err != nil {
-				log.Printf("[ERROR] Erro ao converter YAML para JSON: %v", err)
-				log.Printf("[DEBUG] Primeiros 500 caracteres do YAML: %s", string(yamlData[:min(500, len(yamlData))]))
+				// log.Printf("[ERROR] Erro ao converter YAML para JSON: %v", err)
+				// log.Printf("[DEBUG] Primeiros 500 caracteres do YAML: %s", string(yamlData[:min(500, len(yamlData))]))
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": fmt.Sprintf("Erro ao converter YAML para JSON: %v", err),
 					"details": "Verifique os logs do servidor para mais informações",
@@ -384,7 +384,7 @@ func setupRouter(proxy *ProxyServer) *gin.Engine {
 
 			// Validar se a conversão foi bem-sucedida
 			if swaggerData == nil || len(swaggerData) == 0 {
-				log.Printf("[ERROR] YAML convertido está vazio")
+				// log.Printf("[ERROR] YAML convertido está vazio")
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "YAML convertido está vazio",
 				})
@@ -442,16 +442,16 @@ func main() {
 		WriteTimeout: writeTimeout,
 	}
 
-	log.Printf("🚀 Proxy Binance iniciado na porta %s", port)
-	log.Printf("📡 URL da Binance: %s", binanceURL)
-	log.Printf("🌐 Endpoints disponíveis:")
-	log.Printf("   - GET  /health - Health check")
-	log.Printf("   - GET  /test - Testar conexão com Binance")
-	log.Printf("   - GET  /swagger/index.html - Documentação Swagger UI")
-	log.Printf("   - GET  /* - Proxy para API da Binance")
-	log.Printf("   - POST /* - Proxy para API da Binance")
+	// log.Printf("🚀 Proxy Binance iniciado na porta %s", port)
+	// log.Printf("📡 URL da Binance: %s", binanceURL)
+	// log.Printf("🌐 Endpoints disponíveis:")
+	// log.Printf("   - GET  /health - Health check")
+	// log.Printf("   - GET  /test - Testar conexão com Binance")
+	// log.Printf("   - GET  /swagger/index.html - Documentação Swagger UI")
+	// log.Printf("   - GET  /* - Proxy para API da Binance")
+	// log.Printf("   - POST /* - Proxy para API da Binance")
 
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Erro ao iniciar servidor: %v", err)
+		// log.Fatalf("Erro ao iniciar servidor: %v", err)
 	}
 }
