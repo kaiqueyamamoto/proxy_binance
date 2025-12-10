@@ -29,7 +29,8 @@ echo -e "${GREEN}✅ Configuração:${NC}"
 echo "   Porta: $PORT"
 echo "   URL Binance: $BINANCE_API_URL"
 echo ""
-
+#
+#
 # Executar o proxy
 go run main.go
 
